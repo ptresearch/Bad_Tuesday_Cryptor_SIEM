@@ -1,0 +1,57 @@
+event Remote_Login:
+    key:
+        event_src.host
+    filter {
+        event_src.host != null and
+        msgid == "4624" and
+        event_src.title == "windows" and
+                logon_type == 3
+    }
+    
+event Psexesvc_started:
+    key:
+        event_src.host
+    filter {
+        event_src.host != null and
+        msgid == "4688" and
+        lower(object.name) == "psexesvc.exe" and
+        event_src.title == "windows"
+    }
+
+event Schtasks_started:
+    key:
+        event_src.host
+    filter {
+        event_src.host != null and
+        msgid == "4688" and
+        lower(object.name) == "schtasks.exe" and
+        event_src.title == "windows"
+    }
+
+rule Bad_Tuesday_Cryptor: (Remote_Login -> Psexesvc_started -> Schtasks_started ) within 5m
+    
+    on Psexesvc_started {
+        $subject.name = subject.name
+        $subject.domain = subject.domain
+        $src.host = src.host
+        $event_src.host = event_src.host
+        $event_src.vendor = event_src.vendor
+        $event_src.title = event_src.title
+    }
+
+emit {
+    $correlation_name = "Bad_Tuesday_Cryptor"
+    $correlation_type = "incident"
+
+    $subject = "account"
+    $action = "detect"
+    $object = "attack"
+    $status = "success"
+
+    $category.generic = "Malware"
+    $category.high = "Miscellaneous"
+    $category.low = "Detection"
+
+    $id = "PT_SIEM_Bad_Tuesday_Cryptor"
+    $importance = "high"
+}
