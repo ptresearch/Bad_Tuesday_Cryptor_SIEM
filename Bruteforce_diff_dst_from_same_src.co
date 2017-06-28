@@ -1,0 +1,41 @@
+
+event Remote_Login:
+    key:
+        src.host
+    filter {
+        correlation_name == null and
+        event_src.host != null and
+        src.host != null and
+        (msgid == "4624" or msgid == "4625") and
+        event_src.title == "windows" and
+        logon_type == 3
+    }
+
+rule Bruteforce_diff_dst_from_same_src: (Remote_Login[10] with different event_src.host) within 5m
+
+    on Remote_Login {
+        $subject.name = subject.name
+        $subject.domain = subject.domain
+        $src.host = src.host
+        
+        $event_src.vendor = event_src.vendor
+        $event_src.title = event_src.title
+    }
+
+emit { 
+    $correlation_name = "Bruteforce_diff_dst_from_same_src"
+    $correlation_type = "incident"
+    
+    $category.generic = "Attacks & Recon"
+    $category.high = "Attack"
+    $category.low = "Bruteforce"
+    
+    $subject = "account"
+    $action = "initiate"
+    $object = "attack"
+    $status = "success"
+    $object.name = "Bruteforce"
+
+    $id = "PT_SIEM_Bruteforce_diff_dst_from_same_src"
+    $importance = "medium"
+}

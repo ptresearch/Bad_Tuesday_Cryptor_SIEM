@@ -1,7 +1,5 @@
 
 event Psexesvc_started:
-    key:
-        event_src.host
     filter {
         correlation_name == null and
         event_src.host != null and
@@ -11,8 +9,6 @@ event Psexesvc_started:
     }
     
 event Schtasks_started:
-    key:
-        event_src.host
     filter {
         correlation_name == null and
         event_src.host != null and
@@ -21,19 +17,26 @@ event Schtasks_started:
         event_src.title == "windows"
     }
     
-rule Bad_Tuesday_Cryptor: (Psexesvc_started -> Schtasks_started ) within 5m
+rule Potential_attack_psexesvc_schtasks: ((Psexesvc_started[10] with different event_src.host) or (Schtasks_started[10] with different event_src.host)) within 5m
     
     on Psexesvc_started {
         $subject.name = subject.name
         $subject.domain = subject.domain
         
-        $event_src.host = event_src.host
+        $event_src.vendor = event_src.vendor
+        $event_src.title = event_src.title
+    }
+    
+    on Schtasks_started {
+        $subject.name = subject.name
+        $subject.domain = subject.domain
+                
         $event_src.vendor = event_src.vendor
         $event_src.title = event_src.title
     }
     
 emit {
-    $correlation_name = "Bad_Tuesday_Cryptor"
+    $correlation_name = "Potential_attack_psexesvc_schtasks"
     $correlation_type = "incident"
     
     $subject = "account"
@@ -45,6 +48,6 @@ emit {
     $category.high = "Miscellaneous"
     $category.low = "Detection"
     
-    $id = "PT_SIEM_Bad_Tuesday_Cryptor"
+    $id = "PT_SIEM_Potential_attack_psexesvc_schtasks"
     $importance = "high"
 }
